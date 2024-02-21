@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "rest_framework",
     "user",
+    "social_media"
 ]
 
 MIDDLEWARE = [
