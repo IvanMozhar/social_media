@@ -1,7 +1,9 @@
 import os
 import uuid
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import User
 from django.db import models
 from django.utils.text import slugify
 
@@ -11,7 +13,7 @@ def profile_image_file_path(instance, filename):
     if isinstance(instance, Profile):
         filename = f"{slugify(instance.username)}-{uuid.uuid4()}{extension}"
     if isinstance(instance, Post):
-        filename = f"{slugify(instance.user.username)}-{uuid.uuid4()}{extension}"
+        filename = f"{slugify(instance.user)}-{uuid.uuid4()}{extension}"  # TODO check creation of the filename
     return os.path.join("uploads/profiles/", filename)
 
 
@@ -22,7 +24,7 @@ class Profile(models.Model):
     last_name = models.CharField(max_length=63, null=True, blank=True)
     bio = models.CharField(max_length=200, null=True, blank=True)
     pronouns = models.CharField(max_length=53, null=True, blank=True)
-    avatar = models.ImageField(null=True, upload_to=profile_image_file_path)
+    avatar = models.ImageField(blank=True, null=True, upload_to=profile_image_file_path)
 
     def follow(self, profile_to_follow):
         """Create a follow relationship."""
@@ -46,7 +48,7 @@ class Profile(models.Model):
 
 
 class Post(models.Model):
-    user = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="posts")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="posts")
     content = models.TextField(null=True, blank=True)
     media_content = models.ImageField(null=True, upload_to=profile_image_file_path)
     posted = models.DateTimeField(auto_now_add=True)
