@@ -13,7 +13,7 @@ def profile_image_file_path(instance, filename):
     if isinstance(instance, Profile):
         filename = f"{slugify(instance.username)}-{uuid.uuid4()}{extension}"
     if isinstance(instance, Post):
-        filename = f"{slugify(instance.user)}-{uuid.uuid4()}{extension}"  # TODO check creation of the filename
+        filename = f"{slugify(instance.user)}-{uuid.uuid4()}{extension}"
     return os.path.join("uploads/profiles/", filename)
 
 
@@ -66,7 +66,7 @@ class Post(models.Model):
         return self.likes.filter(user=profile).exists()
 
     def __str__(self):
-        return f"Posted by {self.user.username}"
+        return f"Posted by {self.user}"
 
 
 class Follow(models.Model):
@@ -113,4 +113,3 @@ class Comment(models.Model):
         related_name="comments"
     )
     content = models.TextField()
-
