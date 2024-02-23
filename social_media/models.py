@@ -66,6 +66,7 @@ class Post(models.Model):
     content = models.TextField(null=True, blank=True)
     media_content = models.ImageField(null=True, upload_to=profile_image_file_path, blank=True)
     posted = models.DateTimeField(auto_now_add=True)
+    hashtag = models.CharField(max_length=63, null=True, blank=True)
 
     def like(self, profile):
         """Like a post"""
