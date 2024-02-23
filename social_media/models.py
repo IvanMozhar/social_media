@@ -43,12 +43,22 @@ class Profile(models.Model):
         """Check if the user is followed by another profile."""
         return self.followers.filter(follower=profile).exists()
 
+    def all_followers(self):
+        """Return all followers"""
+        return Profile.objects.filter(following__followed=self)
+
+    def all_followings(self):
+        """Return all followings"""
+        return Profile.objects.filter(followers__follower=self)
+
     def __str__(self):
         return self.username
 
 
 class Post(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="posts")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="posts"
+    )
     content = models.TextField(null=True, blank=True)
     media_content = models.ImageField(null=True, upload_to=profile_image_file_path)
     posted = models.DateTimeField(auto_now_add=True)
@@ -71,14 +81,10 @@ class Post(models.Model):
 
 class Follow(models.Model):
     follower = models.ForeignKey(
-        Profile,
-        on_delete=models.CASCADE,
-        related_name="following"
+        Profile, on_delete=models.CASCADE, related_name="following"
     )
     followed = models.ForeignKey(
-        Profile,
-        on_delete=models.CASCADE,
-        related_name="followers"
+        Profile, on_delete=models.CASCADE, related_name="followers"
     )
 
     class Meta:
@@ -86,30 +92,14 @@ class Follow(models.Model):
 
 
 class Like(models.Model):
-    user = models.ForeignKey(
-        Profile,
-        on_delete=models.CASCADE,
-        related_name="likes"
-    )
-    post = models.ForeignKey(
-        Post,
-        on_delete=models.CASCADE,
-        related_name="likes"
-    )
+    user = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="likes")
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="likes")
 
     class Meta:
         unique_together = ("user", "post")
 
 
 class Comment(models.Model):
-    user = models.ForeignKey(
-        Profile,
-        on_delete=models.CASCADE,
-        related_name="comments"
-    )
-    post = models.ForeignKey(
-        Post,
-        on_delete=models.CASCADE,
-        related_name="comments"
-    )
+    user = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="comments")
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
     content = models.TextField()
