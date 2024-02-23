@@ -18,7 +18,7 @@ def profile_image_file_path(instance, filename):
 
 
 class Profile(models.Model):
-    user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE)
+    user = models.OneToOneField(get_user_model(), on_delete=models.CASCADE, unique=True)
     username = models.CharField(max_length=63, unique=True)
     first_name = models.CharField(max_length=63, null=True, blank=True)
     last_name = models.CharField(max_length=63, null=True, blank=True)
@@ -51,6 +51,10 @@ class Profile(models.Model):
         """Return all followings"""
         return Profile.objects.filter(followers__follower=self)
 
+    def all_likes(self):
+        """Return all liked posts"""
+        return Like.objects.filter(user=self)
+
     def __str__(self):
         return self.username
 
@@ -60,7 +64,7 @@ class Post(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="posts"
     )
     content = models.TextField(null=True, blank=True)
-    media_content = models.ImageField(null=True, upload_to=profile_image_file_path)
+    media_content = models.ImageField(null=True, upload_to=profile_image_file_path, blank=True)
     posted = models.DateTimeField(auto_now_add=True)
 
     def like(self, profile):
@@ -74,6 +78,10 @@ class Post(models.Model):
     def is_liked(self, profile):
         """Check liked posts"""
         return self.likes.filter(user=profile).exists()
+
+    def comment(self, profile, content):
+        """Add comment"""
+        Comment.objects.get_or_create(user=profile, post=self, content=content)
 
     def __str__(self):
         return f"Posted by {self.user}"
