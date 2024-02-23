@@ -35,7 +35,8 @@ class PostSerializer(serializers.ModelSerializer):
             "user",
             "content",
             "media_content",
-            "posted"
+            "posted",
+            "hashtag"
         )
         read_only_fields = ("user",)
 
