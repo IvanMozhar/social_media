@@ -26,6 +26,8 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 
 class PostSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField(many=False)
+
     class Meta:
         model = Post
         fields = (
@@ -35,6 +37,7 @@ class PostSerializer(serializers.ModelSerializer):
             "media_content",
             "posted"
         )
+        read_only_fields = ("user",)
 
 
 class FollowSerializer(serializers.ModelSerializer):
@@ -53,3 +56,20 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ("id", "user", "post", "content")
+        read_only_fields = ("user", "post")
+
+
+class CommentPostSerializer(serializers.ModelSerializer):
+    post = serializers.StringRelatedField(many=False)
+    post_content = serializers.CharField(
+        source="post.content",
+        read_only=True
+    )
+    commented_by = serializers.CharField(
+        source="user.username",
+        read_only=True
+    )
+
+    class Meta:
+        model = Comment
+        fields = ("id", "post", "post_content", "content", "commented_by")
