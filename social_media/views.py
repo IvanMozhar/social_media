@@ -17,7 +17,7 @@ from social_media.serializers import (
 
 
 class ProfileViewSet(viewsets.ModelViewSet):
-    queryset = Profile.objects.all()
+    queryset = Profile.objects.all().select_related("user")
     serializer_class = ProfileSerializer
     permission_classes = (IsOwnerOrReadOnly,)
 
@@ -125,14 +125,14 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
 
 class PostViewSet(viewsets.ModelViewSet):
-    queryset = Post.objects.all()
+    queryset = Post.objects.all().select_related("user")
     serializer_class = PostSerializer
     permission_classes = (IsOwnerOrReadOnly,)
 
     def get_queryset(self):
         hashtag = self.request.query_params.get("hashtag")
-        content = self.queryset.query.get("content")
-        username = self.queryset.query.get("username")
+        content = self.request.query_params.get("content")
+        username = self.request.query_params.get("username")
 
         queryset = self.queryset
 
@@ -213,7 +213,11 @@ class PostViewSet(viewsets.ModelViewSet):
     def comments(self, request, pk=None):
         """Endpoints to list all comments"""
         post = self.get_object()
-        comments = Comment.objects.filter(post=post)
+        comments = (
+            Comment.objects.filter(post=post)
+            .select_related("post", "user")
+            .prefetch_related("post__user")
+        )
         serializer = CommentPostSerializer(comments, many=True)
         return Response(serializer.data)
 
