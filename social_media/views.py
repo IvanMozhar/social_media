@@ -26,6 +26,20 @@ class ProfileViewSet(viewsets.ModelViewSet):
             raise ValidationError("You already have a profile.")
         serializer.save(user=self.request.user)
 
+    def get_queryset(self):
+        username = self.request.query_params.get("username")
+        bio = self.request.query_params.get("bio")
+
+        queryset = self.queryset
+
+        if username:
+            queryset = queryset.filter(username__icontains=username)
+
+        if bio:
+            queryset = queryset.filter(bio__icontains=bio)
+
+        return queryset.distinct()
+
     @action(
         methods=["POST"],
         detail=True,
@@ -114,6 +128,24 @@ class PostViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
     permission_classes = (IsOwnerOrReadOnly,)
+
+    def get_queryset(self):
+        hashtag = self.request.query_params.get("hashtag")
+        content = self.queryset.query.get("content")
+        username = self.queryset.query.get("username")
+
+        queryset = self.queryset
+
+        if hashtag:
+            queryset = queryset.filter(hashtag__icontains=hashtag)
+
+        if content:
+            queryset = queryset.filter(content__icontains=content)
+
+        if username:
+            queryset = queryset.filter(likes__user__username=username)
+
+        return queryset.distinct()
 
     @action(
         methods=["POST"],
