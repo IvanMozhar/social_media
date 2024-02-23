@@ -1,4 +1,3 @@
-from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status
@@ -6,9 +5,15 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from social_media.models import Profile, Post
+from social_media.models import Profile, Post, Like, Comment
 from social_media.permissions import IsOwnerOrReadOnly
-from social_media.serializers import ProfileSerializer, PostSerializer
+from social_media.serializers import (
+    ProfileSerializer,
+    PostSerializer,
+    LikeSerializer,
+    CommentSerializer,
+    CommentPostSerializer,
+)
 
 
 class ProfileViewSet(viewsets.ModelViewSet):
@@ -17,6 +22,8 @@ class ProfileViewSet(viewsets.ModelViewSet):
     permission_classes = (IsOwnerOrReadOnly,)
 
     def perform_create(self, serializer):
+        if Profile.objects.filter(user=self.request.user).exists():
+            raise ValidationError("You already have a profile.")
         serializer.save(user=self.request.user)
 
     @action(
@@ -94,6 +101,14 @@ class ProfileViewSet(viewsets.ModelViewSet):
         serializer = ProfileSerializer(all_followings, many=True)
         return Response(serializer.data)
 
+    @action(methods=["GET"], detail=True, permission_classes=[IsAuthenticated])
+    def all_likes(self, request, pk=None):
+        """Endpoint for viewing all liked posts"""
+        profile = self.get_object()
+        all_likes = profile.all_likes()
+        serializer = LikeSerializer(all_likes, many=True)
+        return Response(serializer.data)
+
 
 class PostViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all()
@@ -116,3 +131,94 @@ class PostViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=["POST"], detail=True, permission_classes=[IsAuthenticated])
+    def like(self, request, pk=None):
+        """Endpoint for liking a post."""
+        post = get_object_or_404(Post, pk=pk)
+        liked = Like.objects.filter(user=request.user.profile, post=post).exists()
+
+        if liked:
+            return Response(
+                {"detail": "You have already liked this post"},
+                status=status.HTTP_200_OK,
+            )
+        post.like(request.user.profile)
+        return Response({"detail": "You liked this post"}, status=status.HTTP_200_OK)
+
+    @action(methods=["POST"], detail=True, permission_classes=[IsAuthenticated])
+    def unlike(self, request, pk=None):
+        """Endpoint for unliking a post."""
+        post = get_object_or_404(Post, pk=pk)
+        liked = Like.objects.filter(user=request.user.profile, post=post).exists()
+        if not liked:
+            return Response(
+                {"detail": "You have not liked this post"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        post.unlike(request.user.profile)
+        return Response(
+            {"detail": "You unliked this post"},
+            status=status.HTTP_200_OK,
+        )
+
+    @action(
+        methods=["POST"],
+        detail=True,
+        permission_classes=[IsAuthenticated],
+        serializer_class=CommentSerializer,
+    )
+    def add_comment(self, request, pk=None):
+        """Endpoint for adding a comment"""
+        post = get_object_or_404(Post, pk=pk)
+        serializer = CommentSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user.profile, post=post)
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=["GET"], permission_classes=[IsAuthenticated])
+    def comments(self, request, pk=None):
+        """Endpoints to list all comments"""
+        post = self.get_object()
+        comments = Comment.objects.filter(post=post)
+        serializer = CommentPostSerializer(comments, many=True)
+        return Response(serializer.data)
+
+    @action(
+        detail=True,
+        methods=["GET", "PUT", "DELETE"],
+        permission_classes=[IsAuthenticated],
+        serializer_class=CommentSerializer,
+        url_path="comments/(?P<comment_pk>[^/.]+)/edit",
+    )
+    def edit_comment(self, request, pk=None, comment_pk=None):
+        comment = get_object_or_404(Comment, pk=comment_pk, post__id=pk)
+
+        self.check_object_permissions(request, comment)
+
+        if request.method == "GET":
+            serializer = CommentSerializer(comment)
+            return Response(serializer.data)
+
+        elif request.method == "PUT":
+            if request.user.profile != comment.user:
+                return Response(
+                    {"detail": "You do not have permission to edit this comment."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            serializer = CommentSerializer(comment, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        elif request.method == "DELETE":
+            if request.user != comment.user:
+                return Response(
+                    {"detail": "You do not have permission to delete this comment."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            comment.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
