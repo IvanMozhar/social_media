@@ -22,6 +22,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "pronouns",
             "avatar"
         )
+        read_only_fields = ("user",)
 
 
 class PostSerializer(serializers.ModelSerializer):
