@@ -1,5 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -13,6 +15,7 @@ from social_media.serializers import (
     LikeSerializer,
     CommentSerializer,
     CommentPostSerializer,
+    LikePostSerializer,
 )
 
 
@@ -121,7 +124,30 @@ class ProfileViewSet(viewsets.ModelViewSet):
         profile = self.get_object()
         all_likes = profile.all_likes()
         serializer = LikeSerializer(all_likes, many=True)
-        return Response(serializer.data)
+        if profile == request.user.profile:
+            return Response(serializer.data)
+        return Response(
+            {"detail": "You cannot see posts liked by other user"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "username",
+                type=OpenApiTypes.STR,
+                description="Filter profiles by username (ex. ?username=adm)",
+            ),
+            OpenApiParameter(
+                "bio",
+                type=OpenApiTypes.STR,
+                description="Filter profiles by bio (ex. ?bio=am)",
+            ),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        """List of profiles with filter by bio and username"""
+        return super().list(request, *args, **kwargs)
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -221,6 +247,18 @@ class PostViewSet(viewsets.ModelViewSet):
         serializer = CommentPostSerializer(comments, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["GET"], permission_classes=[IsAuthenticated])
+    def likes(self, request, pk=None):
+        """Endpoints to list all likes on the post"""
+        post = self.get_object()
+        likes = (
+            Like.objects.filter(post=post)
+            .select_related("post", "user")
+            .prefetch_related("post__user")
+        )
+        serializer = LikePostSerializer(likes, many=True)
+        return Response(serializer.data)
+
     @action(
         detail=True,
         methods=["GET", "PUT", "DELETE"],
@@ -229,6 +267,7 @@ class PostViewSet(viewsets.ModelViewSet):
         url_path="comments/(?P<comment_pk>[^/.]+)/edit",
     )
     def edit_comment(self, request, pk=None, comment_pk=None):
+        """Endpoint for editing comment (users can only edit their own comments)"""
         comment = get_object_or_404(Comment, pk=comment_pk, post__id=pk)
 
         self.check_object_permissions(request, comment)
@@ -258,3 +297,26 @@ class PostViewSet(viewsets.ModelViewSet):
                 )
             comment.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "username",
+                type=OpenApiTypes.STR,
+                description="Filter posts by username (ex. ?username=adm)",
+            ),
+            OpenApiParameter(
+                "content",
+                type=OpenApiTypes.STR,
+                description="Filter posts by content (ex. ?content=This)",
+            ),
+            OpenApiParameter(
+                "hashtag",
+                type=OpenApiTypes.STR,
+                description="Filter posts by hashtag (ex. ?hashtag=This)",
+            ),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        """List of posts with filter by hashtag, content and username"""
+        return super().list(request, *args, **kwargs)
