@@ -64,7 +64,9 @@ class Post(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="posts"
     )
     content = models.TextField(null=True, blank=True)
-    media_content = models.ImageField(null=True, upload_to=profile_image_file_path, blank=True)
+    media_content = models.ImageField(
+        null=True, upload_to=profile_image_file_path, blank=True
+    )
     posted = models.DateTimeField(auto_now_add=True)
     hashtag = models.CharField(max_length=63, null=True, blank=True)
 
@@ -106,6 +108,9 @@ class Like(models.Model):
 
     class Meta:
         unique_together = ("user", "post")
+
+    def __str__(self):
+        return f"Liked by {self.user.username}"
 
 
 class Comment(models.Model):
