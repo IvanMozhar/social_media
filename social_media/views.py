@@ -20,7 +20,7 @@ from social_media.serializers import (
 
 
 class ProfileViewSet(viewsets.ModelViewSet):
-    queryset = Profile.objects.all().select_related("user")
+    queryset = Profile.objects.select_related("user")
     serializer_class = ProfileSerializer
     permission_classes = (IsOwnerOrReadOnly,)
 
@@ -54,11 +54,9 @@ class ProfileViewSet(viewsets.ModelViewSet):
         profile = self.get_object()
         serializer = self.get_serializer(profile, data=request.data)
 
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["POST"], permission_classes=[IsAuthenticated])
     def follow(self, request, pk=None):
@@ -107,7 +105,11 @@ class ProfileViewSet(viewsets.ModelViewSet):
         """Endpoint for retrieving all followers of a user."""
         profile = self.get_object()
         all_followers = profile.all_followers()
+
         serializer = ProfileSerializer(all_followers, many=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
         return Response(serializer.data)
 
     @action(detail=True, methods=["GET"], permission_classes=[IsAuthenticated])
@@ -151,7 +153,7 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
 
 class PostViewSet(viewsets.ModelViewSet):
-    queryset = Post.objects.all().select_related("user")
+    queryset = Post.objects.select_related("user")
     serializer_class = PostSerializer
     permission_classes = (IsOwnerOrReadOnly,)
 
@@ -184,11 +186,9 @@ class PostViewSet(viewsets.ModelViewSet):
         post = self.get_object()
         serializer = self.get_serializer(post, data=request.data)
 
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(methods=["POST"], detail=True, permission_classes=[IsAuthenticated])
     def like(self, request, pk=None):
@@ -230,10 +230,9 @@ class PostViewSet(viewsets.ModelViewSet):
         """Endpoint for adding a comment"""
         post = get_object_or_404(Post, pk=pk)
         serializer = CommentSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(user=request.user.profile, post=post)
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user.profile, post=post)
+        return Response(serializer.data)
 
     @action(detail=True, methods=["GET"], permission_classes=[IsAuthenticated])
     def comments(self, request, pk=None):
@@ -245,6 +244,8 @@ class PostViewSet(viewsets.ModelViewSet):
             .prefetch_related("post__user")
         )
         serializer = CommentPostSerializer(comments, many=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(serializer.data)
 
     @action(detail=True, methods=["GET"], permission_classes=[IsAuthenticated])
@@ -257,6 +258,8 @@ class PostViewSet(viewsets.ModelViewSet):
             .prefetch_related("post__user")
         )
         serializer = LikePostSerializer(likes, many=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(serializer.data)
 
     @action(
@@ -283,11 +286,9 @@ class PostViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_403_FORBIDDEN,
                 )
             serializer = CommentSerializer(comment, data=request.data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
 
         elif request.method == "DELETE":
             if request.user != comment.user:
