@@ -26,6 +26,7 @@ Install and create account in Docker first
 docker-compose build
 docker-compose up
 ```
+#### App will be available at http://127.0.0.1:8000/api/
 ### Pull from docker
 ```
 docker pull ivanmozhar/social_media:latest
